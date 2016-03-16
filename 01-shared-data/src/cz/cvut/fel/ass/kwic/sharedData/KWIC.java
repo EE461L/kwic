@@ -21,6 +21,7 @@ public class KWIC {
      * First key is start of the line from lineIndexes. Second index marks where the line starts.
      */
     private int[][] wordIndexes;
+    private int wordCounter = 0;
 
     /**
      * Keeps 2D array of indexes of alphabetically sorted circular shifts of the lines.
@@ -28,6 +29,9 @@ public class KWIC {
      */
     private int[][] alphabetizedIndexes;
 
+    /**
+     * KWIC constructor.
+     */
     public KWIC() {
         Arrays.fill(lineIndexes, -1);   // Initialize all line indexes to -1
         Arrays.fill(chars, (char) -1);  // Initialize all chars to -1
@@ -104,6 +108,7 @@ public class KWIC {
                 if (newWord) {
                     wordIndexes[lineIterator] = expandIfNeeded(wordIndexes[lineIterator], indexIterator + 1);
                     wordIndexes[lineIterator][indexIterator++] = charIterator;
+                    ++wordCounter;
                     newWord = false;
                 }
             }
@@ -119,50 +124,42 @@ public class KWIC {
      */
     public void alphabetizer() {
         // Fill up alphabetized indexes
-        alphabetizedIndexes = new int[lineIndexes.length][30];
-        for (int line = 0; line < wordIndexes.length; ++line) {
-            Arrays.fill(alphabetizedIndexes[line], -1);
-            for (int word = 0; word < wordIndexes[line].length && wordIndexes[line][word] != -1; ++word) {
-                alphabetizedIndexes[line][word] = word;
+        alphabetizedIndexes = new int[wordCounter][3];
+        int index = 0;
+        for (int line = 0; line < lineIndexes.length && lineIndexes[line] != -1; ++line) {
+            for (int word = 0; word < wordIndexes[line].length && wordIndexes[line][word] != -1; ++word, ++index) {
+                alphabetizedIndexes[index][0] = line;   // Line index
+                alphabetizedIndexes[index][1] = word;   // Word index in line
+                alphabetizedIndexes[index][2] = wordIndexes[line][word]; // Word index in chars
             }
         }
 
-        // Iterate through lines
-        for (int lineIterator = 0;
-             lineIterator < lineIndexes.length && lineIndexes[lineIterator] != -1;
-             ++lineIterator) {
-            for (int bubbleIterator = 0; bubbleIterator < alphabetizedIndexes[lineIterator].length - 1; ++bubbleIterator) {
-                for (int wordIterator = 0; wordIterator < alphabetizedIndexes[lineIterator].length - bubbleIterator - 1; ++wordIterator) {
+        // Iterate through words
+        for (int bubbleIndex = 0; bubbleIndex < alphabetizedIndexes.length - 1; ++bubbleIndex)
+            for (index = 0; index < alphabetizedIndexes.length - bubbleIndex - 1; ++index) {
+                int wordIndex = wordIndexes[alphabetizedIndexes[index][0]][alphabetizedIndexes[index][1]];
+                int nextWordIndex = wordIndexes[alphabetizedIndexes[index + 1][0]][alphabetizedIndexes[index + 1][1]];
 
-                    if (alphabetizedIndexes[lineIterator][wordIterator + 1] == -1) {
-                        break;
-                    }
+                char wordChar = (char) -1;
+                char nextWordChar = (char) -1;
 
-                    int wordIndex = wordIndexes[lineIterator][alphabetizedIndexes[lineIterator][wordIterator]];
-                    int nextWordIndex = wordIndexes[lineIterator][alphabetizedIndexes[lineIterator][wordIterator + 1]];
+                // Read chars until they aren't equal
+                for (; wordChar == nextWordChar && nextWordIndex < chars.length && chars[nextWordIndex] != -1;
+                     ++wordIndex, ++nextWordIndex) {
+                    wordChar = chars[wordIndex];
+                    nextWordChar = chars[nextWordIndex];
+                    ++wordIndex;
+                    ++nextWordIndex;
+                }
 
-                    char wordChar = (char) -1;
-                    char nextWordChar = (char) -1;
-
-                    // Read chars until they aren't equal
-                    for (; wordChar == nextWordChar && nextWordIndex < chars.length && chars[nextWordIndex] != -1;
-                         ++wordIndex, ++nextWordIndex) {
-                        wordChar = chars[wordIndex];
-                        nextWordChar = chars[nextWordIndex];
-                        ++wordIndex;
-                        ++nextWordIndex;
-                    }
-
-                    // Now that chars aren't equal, compare them, then do the bubble switch
-                    if (wordChar > nextWordChar) {
-                        // Bubble sort switch
-                        int temp = alphabetizedIndexes[lineIterator][wordIterator];
-                        alphabetizedIndexes[lineIterator][wordIterator] = alphabetizedIndexes[lineIterator][wordIterator + 1];
-                        alphabetizedIndexes[lineIterator][wordIterator + 1] = temp;
-                    }
+                // Now that chars aren't equal, compare them, then do the bubble switch
+                if (wordChar > nextWordChar) {
+                    // Bubble sort switch
+                    int[] temp = alphabetizedIndexes[index];
+                    alphabetizedIndexes[index] = alphabetizedIndexes[index + 1];
+                    alphabetizedIndexes[index + 1] = temp;
                 }
             }
-        }
     }
 
     /**
@@ -170,23 +167,18 @@ public class KWIC {
      * Output Component.
      */
     public void output(Writer writer) throws IOException {
-        for (int line = 0; line < lineIndexes.length && lineIndexes[line] != -1; ++line) {
-            for (int word = 0;
-                 word < alphabetizedIndexes[line].length && alphabetizedIndexes[line][word] != -1;
-                 ++word) {
-                int wordStart = wordIndexes[line][alphabetizedIndexes[line][word]];
-                int lineStart = lineIndexes[line];
-                int lineEnd = lineIndexes[line + 1] != -1 ? lineIndexes[line + 1] : charCounter;
+        for (int index = 0; index < alphabetizedIndexes.length; ++index) {
+            int wordStart = alphabetizedIndexes[index][2];
+            int lineStart = lineIndexes[alphabetizedIndexes[index][0]];
+            int lineEnd = lineIndexes[alphabetizedIndexes[index][0] + 1] != -1 ? lineIndexes[alphabetizedIndexes[index][0] + 1] : charCounter;
 
-                // From the word start to the end of line
-                for (int charIndex = wordStart; charIndex < lineEnd; ++charIndex) {
-                    writer.write(chars[charIndex]);
-                }
-                // From the beginning of the line to the word
-                for (int charIndex = lineStart; charIndex < wordStart; ++charIndex) {
-                    writer.write(chars[charIndex]);
-                }
-                writer.write('\n');
+            // From the word start to the end of line
+            for (int charIndex = wordStart; charIndex < lineEnd; ++charIndex) {
+                writer.write(chars[charIndex]);
+            }
+            // From the beginning of the line to the word
+            for (int charIndex = lineStart; charIndex < wordStart; ++charIndex) {
+                writer.write(chars[charIndex]);
             }
             writer.write('\n');
         }
