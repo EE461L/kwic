@@ -1,4 +1,4 @@
-package cz.cvit.fel.ass.kwic.implicitInvocation;
+package cz.cvut.fel.ass.kwic.implicitInvocation;
 
 import java.util.*;
 

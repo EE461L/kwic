@@ -1,4 +1,4 @@
-package cz.cvit.fel.ass.kwic.implicitInvocation;
+package cz.cvut.fel.ass.kwic.implicitInvocation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +18,7 @@ class Lines extends Observable {
     }
 
     void delete(int index) {
+        lines.remove(index);
     }
 
     String get(int index) {
