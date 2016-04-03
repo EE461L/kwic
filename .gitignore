@@ -15,3 +15,6 @@ hs_err_pid*
 *.iml
 .idea/
 
+#Python cache
+
+__pycache__/
